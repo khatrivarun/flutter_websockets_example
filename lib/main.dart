@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/status.dart' as status;
 
 void main() {
   runApp(const MyApp());
@@ -29,12 +33,42 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  late final IOWebSocketChannel ioWebSocketChannel;
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
+  @override
+  void initState() {
+    super.initState();
+
+    ioWebSocketChannel =
+        IOWebSocketChannel.connect(Uri.parse("ws://10.0.2.2:3000"));
+
+    ioWebSocketChannel.stream.listen((event) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(event.toString())));
+    }, onError: (error) {
+      print(error);
     });
+  }
+
+  void _sendMessage() {
+    ioWebSocketChannel.sink.add(json.encode({
+      "event": "message",
+      "data": {"authenticated": true, "message": "lol whats up"}
+    }));
+  }
+
+  void _sendError() {
+    ioWebSocketChannel.sink.add(json.encode({
+      "event": "message",
+      "data": {"message": "lol whats up"}
+    }));
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    ioWebSocketChannel.sink.add(status.goingAway);
   }
 
   @override
@@ -47,20 +81,16 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            TextButton(
+              onPressed: _sendMessage,
+              child: const Text('Send Message'),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
+            TextButton(
+              onPressed: _sendError,
+              child: const Text('Send Error'),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
